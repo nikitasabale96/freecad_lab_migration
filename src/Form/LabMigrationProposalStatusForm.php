@@ -16,6 +16,9 @@ use Drupal\user\Entity\User;
 use Drupal\Component\Utility\Xss;
 use Drupal\Core\Url;
 use Drupal\Core\Link;
+use Drupal\Core\Mail\MailManager;
+use Drupal\Core\Mail\MailManagerInterface;
+
 
 class LabMigrationProposalStatusForm extends FormBase {
 
@@ -316,22 +319,27 @@ $response->send();
       //   return;
       // }
       /* sending email */
-  //     $user_data = User::load($proposal_data->uid);
-  //     $email_to = $user_data->mail;
-  //     $from = $config->get('lab_migration_from_email', '');
-  //     $bcc = $user->mail . ', ' . $config->get('lab_migration_emails', '');
-  //     $cc = $config->get('lab_migration_cc_emails', '');
-  //     $param['proposal_completed']['proposal_id'] = $proposal_id;
-  //     $param['proposal_completed']['user_id'] = $proposal_data->uid;
-  //     $param['proposal_completed']['headers'] = [
-  //       'From' => $from,
-  //       'MIME-Version' => '1.0',
-  //       'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
-  //       'Content-Transfer-Encoding' => '8Bit',
-  //       'X-Mailer' => 'Drupal',
-  //       'Cc' => $cc,
-  //       'Bcc' => $bcc,
-  //     ];
+      $user_data = User::load($proposal_data->uid);
+      $email_to = $user_data->mail;
+      $from = $config->get('lab_migration_from_email', '');
+      $bcc = $user->mail . ', ' . $config->get('lab_migration_emails', '');
+      $cc = $config->get('lab_migration_cc_emails', '');
+      $param['proposal_completed']['proposal_id'] = $proposal_id;
+      $param['proposal_completed']['user_id'] = $proposal_data->uid;
+      $param['proposal_completed']['headers'] = [
+        'From' => $from,
+        'MIME-Version' => '1.0',
+        'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
+        'Content-Transfer-Encoding' => '8Bit',
+        'X-Mailer' => 'Drupal',
+        'Cc' => $cc,
+        'Bcc' => $bcc,
+      ];
+          $langcode = $user->getPreferredLangcode();
+if (!\Drupal::service('plugin.manager.mail')->mail('lab_migration', 'proposal_completed', $email_to, 'en', $params, $form, TRUE));
+ { \Drupal::messenger()->addError('Error sending email message.');
+}
+
       // if (!drupal_mail('lab_migration', 'proposal_completed', $email_to, language_default(), $param, $from, TRUE)) {
       //   \Drupal::messenger()->addmessage('Error sending email message.', 'error');
       // }

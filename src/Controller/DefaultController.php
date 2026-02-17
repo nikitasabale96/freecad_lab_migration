@@ -24,7 +24,9 @@ use Drupal\Core\Render\Markup;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-
+use Drupal\Core\Mail\MailManager;
+use Drupal\Core\Mail\MailManagerInterface;
+use Drupal\Core\Routing\TrustedRedirectResponse;
 /**
  * Default controller for the lab_migration module.
  */
@@ -717,9 +719,12 @@ $link = Link::fromTextAndUrl(t('Edit'), $url)->toString();
       \Drupal::messenger()->addMessage('Invalid solution.', 'error');
       // RedirectResponse('lab-migration/code');
       // return new RedirectResponse('/lab-migration/code/list-experiments');
-      $response = new RedirectResponse(Url::fromRoute('/lab-migration/code/list-experiments')->toString());
+      // $response = new RedirectResponse(Url::fromRoute('/lab-migration/code/list-experiments')->toString());
       // Send the redirect response
-         //$response->send();
+      $response = new TrustedRedirectResponse(
+  Url::fromUserInput('/lab-migration/code/list-experiments')->toString()
+);
+         $response->send();
 
       return;
     }
@@ -756,6 +761,7 @@ $link = Link::fromTextAndUrl(t('Edit'), $url)->toString();
     $query->range(0, 1);
     $proposal_q = $query->execute();
     $proposal_data = $proposal_q->fetchObject();
+    
     // if (!$proposal_data) {
     //   \Drupal::messenger()->addMessage('You do not have permission to delete this solution.', 'error');
 
@@ -768,35 +774,54 @@ $link = Link::fromTextAndUrl(t('Edit'), $url)->toString();
       \Drupal::messenger()->addMessage('Solution deleted.', 'status');
 
       /* sending email */
-      // $email_to = $user->mail;
+     $user_data = User::load($user->uid);
+$email_to = $user->getEmail();
 
-      // $from = $config->get('lab_migration_from_email', '');
-      // $bcc = $config->get('lab_migration_emails', '');
-      // $cc = $config->get('lab_migration_cc_emails', '');
-      // $param['solution_deleted_user']['solution_id'] = $proposal_data->id;
-      // $param['solution_deleted_user']['lab_title'] = $proposal_data->lab_title;
-      // $param['solution_deleted_user']['experiment_title'] = $experiment_data->title;
-      // $param['solution_deleted_user']['solution_number'] = $solution_data->code_number;
-      // $param['solution_deleted_user']['solution_caption'] = $solution_data->caption;
-      // $param['solution_deleted_user']['user_id'] = $user->uid;
-      // $param['solution_deleted_user']['headers'] = [
-      //   'From' => $from,
-      //   'MIME-Version' => '1.0',
-      //   'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
-      //   'Content-Transfer-Encoding' => '8Bit',
-      //   'X-Mailer' => 'Drupal',
-      //   'Cc' => $cc,
-      //   'Bcc' => $bcc,
-      // ];
+$config = \Drupal::config('lab_migration.settings');
 
-      // if (!drupal_mail('lab_migration', 'solution_deleted_user', $email_to, language_default(), $param, $from, TRUE)) {
-      //   \Drupal::messenger()->addMessage('Error sending email message.', 'error');
-      // }
-    }
-    else {
-      \Drupal::messenger()->addMessage('Error deleting example.', 'status');
-    }
-    $response = new RedirectResponse(Url::fromRoute('lab_migration.list_experiments')->toString());
+$from = $config->get('lab_migration_from_email');
+$bcc  = $config->get('lab_migration_emails');
+$cc   = $config->get('lab_migration_cc_emails');
+
+$param['solution_deleted_user']['solution_id'] = $proposal_data->id;
+$param['solution_deleted_user']['lab_title'] = $proposal_data->lab_title;
+$param['solution_deleted_user']['experiment_title'] = $experiment_data->title;
+$param['solution_deleted_user']['solution_number'] = $solution_data->code_number;
+$param['solution_deleted_user']['solution_caption'] = $solution_data->caption;
+$param['solution_deleted_user']['user_id'] = $user->id();
+
+// Ensure CC and BCC are strings
+$cc  = is_array($cc)  ? implode(',', $cc)  : $cc;
+$bcc = is_array($bcc) ? implode(',', $bcc) : $bcc;
+
+$param['solution_deleted_user']['headers'] = [
+  'From' => $from,
+  'MIME-Version' => '1.0',
+  'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
+  'Content-Transfer-Encoding' => '8Bit',
+  'X-Mailer' => 'Drupal',
+  'Cc' => $cc,
+  'Bcc' => $bcc,
+];
+
+$langcode = \Drupal::languageManager()->getDefaultLanguage()->getId();
+$mail_manager = \Drupal::service('plugin.manager.mail');
+
+$result = $mail_manager->mail(
+  'lab_migration',
+  'solution_deleted_user',
+  $email_to,
+  $langcode,
+  $param,
+  NULL,
+  TRUE
+);
+
+if (!$result['result']) {
+  \Drupal::messenger()->addError('Error sending email message.');
+}
+        }
+            $response = new RedirectResponse(Url::fromRoute('lab_migration.list_experiments')->toString());
   
   // Send the redirect response
   $response->send();

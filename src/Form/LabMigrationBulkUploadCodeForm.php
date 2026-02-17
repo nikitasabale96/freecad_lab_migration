@@ -12,6 +12,9 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
 use Drupal\Core\Url;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Drupal\Core\Mail\MailManager;
+use Drupal\Core\Mail\MailManagerInterface;
+
 
 class LabMigrationBulkUploadCodeForm extends FormBase {
 
@@ -451,24 +454,33 @@ $response->send();
     }
     add_message('Solution uploaded successfully.', 'status');
     /* sending email */
-    $email_to = $user->mail;
-    $from = $config->get('lab_migration_from_email', '');
-    $bcc = $config->get('lab_migration_emails', '');
-    $cc = $config->get('lab_migration_cc_emails', '');
+       $user_data = \Drupal::entityTypeManager()->getStorage('user')->load($proposal_data->uid);
+$email_to = $user_data->getEmail();
+    $from = \Drupal::config('lab_migration.settings')->get('lab_migration_from_email');
+$bcc = \Drupal::config('lab_migration.settings')->get('lab_migration_emails');
+$cc = \Drupal::config('lab_migration.settings')->get('lab_migration_cc_emails');
+
     $param['solution_uploaded']['solution_id'] = $solution_id;
     $param['solution_uploaded']['user_id'] = $user->uid;
-    $param['solution_uploaded']['headers'] = [
-      'From' => $from,
-      'MIME-Version' => '1.0',
-      'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
-      'Content-Transfer-Encoding' => '8Bit',
-      'X-Mailer' => 'Drupal',
-      'Cc' => $cc,
-      'Bcc' => $bcc,
-    ];
-    if (!drupal_mail('lab_migration', 'solution_uploaded', $email_to, language_default(), $param, $from, TRUE)) {
-      add_message('Error sending email message.', 'error');
-    }
+    $param['solution_uploaded']['headers'] = [  'From' => $from,
+          'MIME-Version' => '1.0',
+          'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
+          'Content-Transfer-Encoding' => '8Bit',
+          'X-Mailer' => 'Drupal',
+          'Cc' => $cc,
+          'Bcc' => $bcc,
+];
+
+  $langcode = \Drupal::languageManager()->getDefaultLanguage()->getId();
+      $mail_manager = \Drupal::service('plugin.manager.mail');
+  if (!\Drupal::service('plugin.manager.mail')->mail('lab_migration', 'proposal_uploaded', $email_to, 'en', $params, $form, TRUE));
+  { \Drupal::messenger()->addError('Error sending email message.');
+  }
+
+
+    // if (!drupal_mail('lab_migration', 'solution_uploaded', $email_to, language_default(), $param, $from, TRUE)) {
+    //   add_message('Error sending email message.', 'error');
+    // }
     RedirectResponse('lab-migration/code-approval/bulk/');
   }
 

@@ -20,6 +20,8 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Mail\MailManagerInterface;
 use Drupal\Core\DependencyInjection\ContainerInterface;
 use Drupal\Core\Session\AccountProxy;
+use Drupal\Core\Mail\MailManager;
+
 
 class LabMigrationProposalApprovalForm extends FormBase {
 
@@ -293,31 +295,35 @@ $proposal_id = (int) $route_match->getParameter('id');
       ];
       \Drupal::database()->query($query, $args);
       /* sending email */
-      // $user_data = loadMultiple($proposal_data->uid);
-      // $user_data = User::load($proposal_data->uid);
-      // $email_to = $user_data->mail;
-      // $from = $config->get('lab_migration_from_email', '');
-      // Load the configuration object for your module.
-$config = \Drupal::config('Lab_migration.settings');
+$config = \Drupal::config('lab_migration.settings');
 
-      // $from = $config->get('lab_migration_from_email') ?: '';
-      // // $bcc = $user->mail . ', ' . $config->get('lab_migration_emails', '');
-      // $bcc = trim($user_email . ', ' . $lab_migration_emails, ', ');
-      // $cc = $config->get('lab_migration_cc_emails', '');
-      // $param['proposal_approved']['proposal_id'] = $proposal_id;
-      // $param['proposal_approved']['user_id'] = $proposal_data->uid;
-      // $param['proposal_approved']['headers'] = [
-      //   'From' => $from,
-      //   'MIME-Version' => '1.0',
-      //   'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
-      //   'Content-Transfer-Encoding' => '8Bit',
-      //   'X-Mailer' => 'Drupal',
-      //   'Cc' => $cc,
-      //   'Bcc' => $bcc,
-      // ];
-      // if (!drupal_mail('lab_migration', 'proposal_approved', $email_to, language_default(), $param, $from, TRUE)) {
-      //   \Drupal::messenger()->add_message('Error sending email message.', 'error');
-      // }
+    $user_data = \Drupal::entityTypeManager()->getStorage('user')->load($proposal_data->uid);
+$email_to = $user_data->getEmail();
+    $from = \Drupal::config('lab_migration.settings')->get('lab_migration_from_email');
+$bcc = \Drupal::config('lab_migration.settings')->get('lab_migration_emails');
+$cc = \Drupal::config('lab_migration.settings')->get('lab_migration_cc_emails');
+
+$params['proposal_approved']['proposal_id'] = $proposal_id;
+$params['proposal_approved']['user_id']     = $proposal_data->uid;
+
+$params['proposal_approved']['headers'] = [
+  'From' => $from,
+          'MIME-Version' => '1.0',
+          'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
+          'Content-Transfer-Encoding' => '8Bit',
+          'X-Mailer' => 'Drupal',
+          'Cc' => $cc,
+          'Bcc' => $bcc,
+];
+
+  $langcode = \Drupal::languageManager()->getDefaultLanguage()->getId();
+      $mail_manager = \Drupal::service('plugin.manager.mail');
+  if (!\Drupal::service('plugin.manager.mail')->mail('lab_migration', 'proposal_approved', $email_to, 'en', $params, $form, TRUE));
+  { \Drupal::messenger()->addError('Error sending email message.');
+  }
+
+
+
       // \Drupal::messenger()->add_message('Lab migration proposal No. ' . $proposal_id . ' approved. User has been notified of the approval.', 'status');
       \Drupal::messenger()->addMessage('Lab migration proposal No. ' . $proposal_id . ' approved. User has been notified of the approval.', 'status');
       // RedirectResponse('lab-migration/manage-proposal');
@@ -337,28 +343,38 @@ $config = \Drupal::config('Lab_migration.settings');
           ":proposal_id" => $proposal_id,
         ];
         $result = \Drupal::database()->query($query, $args);
-        /* sending email */
-        // $user_data = loadMultiple($proposal_data->uid);
-      // $user_data = User::load($proposal_data->uid);
+        $config = \Drupal::config('lab_migration.settings');
 
-      //   $email_to = $user_data->mail;
-      //   $from = $config->get('lab_migration_from_email', '');
-      //   $bcc = $user->mail . ', ' . $config->get('lab_migration_emails', '');
-      //   $cc = $config->get('lab_migration_cc_emails', '');
-      //   $param['proposal_disapproved']['proposal_id'] = $proposal_id;
-      //   $param['proposal_disapproved']['user_id'] = $proposal_data->uid;
-      //   $param['proposal_disapproved']['headers'] = [
-      //     'From' => $from,
-      //     'MIME-Version' => '1.0',
-      //     'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
-      //     'Content-Transfer-Encoding' => '8Bit',
-      //     'X-Mailer' => 'Drupal',
-      //     'Cc' => $cc,
-      //     'Bcc' => $bcc,
-      //   ];
-      //   // if (!drupal_mail('lab_migration', 'proposal_disapproved', $email_to, language_default(), $param, $from, TRUE)) {
-        //   \Drupal::messenger()->add_message('Error sending email message.', 'error');
-        // }
+    $user_data = \Drupal::entityTypeManager()->getStorage('user')->load($proposal_data->uid);
+$email_to = $user_data->getEmail();
+    $from = \Drupal::config('lab_migration.settings')->get('lab_migration_from_email');
+$bcc = \Drupal::config('lab_migration.settings')->get('lab_migration_emails');
+$cc = \Drupal::config('lab_migration.settings')->get('lab_migration_cc_emails');
+
+$params['proposal_disapproved']['proposal_id'] = $proposal_id;
+$params['proposal_disapproved']['user_id']     = $proposal_data->uid;
+
+$params['proposal_disapproved']['headers'] = [
+          'From' => $from,
+          'MIME-Version' => '1.0',
+          'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
+          'Content-Transfer-Encoding' => '8Bit',
+          'X-Mailer' => 'Drupal',
+          'Cc' => $cc,
+          'Bcc' => $bcc,
+];
+
+  $langcode = \Drupal::languageManager()->getDefaultLanguage()->getId();
+      $mail_manager = \Drupal::service('plugin.manager.mail');
+  if (!\Drupal::service('plugin.manager.mail')->mail('lab_migration', 'proposal_disapproved', $email_to, 'en', $params, $form, TRUE));
+  { \Drupal::messenger()->addError('Error sending email message.');
+  }
+
+
+ // }
+//       if (!\Drupal::service('plugin.manager.mail')->mail('lab_migration', 'proposal_disapproved', $email_to, 'en', $params, $form, TRUE));
+//  { \Drupal::messenger()->addError('Error sending email message.');
+// }
         \Drupal::messenger()->addmessage('Lab migration proposal No. ' . $proposal_id . ' dis-approved. User has been notified of the dis-approval.', 'error');
         // RedirectResponse('lab-migration/manage-proposal');
         $url = Url::fromRoute('lab_migration.proposal_pending')->toString();
