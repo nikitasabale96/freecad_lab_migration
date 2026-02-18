@@ -354,8 +354,8 @@ case 'solution_approved':
 
   /* Subject */
   $site_name = \Drupal::config('system.site')->get('name');
-  $message['subject'] = t('[@site_name] Your uploaded Lab migration solution has been approved', [
-    '@site_name' => $site_name,
+  $message['subject'] = t('[@site] Your uploaded Lab migration solution has been approved', [
+    '@site' => $site_name,
   ]);
      
 
@@ -402,8 +402,8 @@ case 'solution_disapproved':
 
   /* Subject */
   $site_name = \Drupal::config('system.site')->get('name');
-  $message['subject'] = t('[@site_name] Your uploaded Lab migration solution has been disapproved', [
-    '@site_name' => $site_name,
+  $message['subject'] = t('[@site] Your uploaded Lab migration solution has been disapproved', [
+    '@site' => $site_name,
   ]);
 
   /* Body */
@@ -448,8 +448,8 @@ case 'solution_deleted_user':
 
   /* Subject */
   $site_name = \Drupal::config('system.site')->get('name');
-  $message['subject'] = t('[@site_name] User has deleted pending Lab migration solution', [
-    '@site_name' => $site_name,
+  $message['subject'] = t('[@site] User has deleted pending Lab migration solution', [
+    '@site' => $site_name,
   ]);
 
   /* Body */
@@ -489,8 +489,8 @@ case 'dependency_uploaded':
 
   /* Subject */
   $site_name = \Drupal::config('system.site')->get('name');
-  $message['subject'] = t('[@site_name] You have uploaded dependency file', [
-    '@site_name' => $site_name,
+  $message['subject'] = t('[@site] You have uploaded dependency file', [
+    '@site' => $site_name,
   ]);
 
   /* Body */
@@ -590,8 +590,8 @@ case 'solution_uploaded':
 
 $message['headers'] = $headers;
 
-  $message['subject'] = t('[@site_name] Your Lab migration solution proposal has been received', [
-    '@site_name' => $site_name,
+  $message['subject'] = t('[@site] Your Lab migration solution proposal has been received', [
+    '@site' => $site_name,
   ]);
 
 /* VERY IMPORTANT: clear default body */
@@ -602,8 +602,8 @@ $site_name = \Drupal::config('system.site')->get('name');
 
 $message['headers'] = $params['solution_uploaded']['headers'];
 
-$message['subject'] = t('[@site_name] You have uploaded Lab migration solution', [
-  '@site_name' => $site_name,
+$message['subject'] = t('[@site] You have uploaded Lab migration solution', [
+  '@site' => $site_name,
 ]);
 
 // IMPORTANT: Reset body to avoid duplicated templates
@@ -681,8 +681,8 @@ case 'solution_proposal_received':
   $message['headers'] = $headers;
 
   /* Subject */
-  $message['subject'] = t('[@site_name] Your Lab migration solution proposal has been received', [
-    '@site_name' => $site_name,
+  $message['subject'] = t('[@site] Your Lab migration solution proposal has been received', [
+    '@site' => $site_name,
   ]);
 
   /* Body */
@@ -769,8 +769,8 @@ case 'solution_proposal_approved':
   $message['headers'] = $headers;
 
   /* Subject */
-  $message['subject'] = t('[@site_name] Lab Migration Solution Proposal Approval', [
-    '@site_name' => $site_name,
+  $message['subject'] = t('[@site] Lab Migration Solution Proposal Approval', [
+    '@site' => $site_name,
   ]);
 
   /* Body */
@@ -861,8 +861,8 @@ case 'solution_proposal_disapproved':
   $message['headers'] = $headers;
 
   /* Subject */
-  $message['subject'] = t('[@site_name] Lab Migration Solution Disapproval', [
-    '@site_name' => $site_name,
+  $message['subject'] = t('[@site] Lab Migration Solution Disapproval', [
+    '@site' => $site_name,
   ]);
 
   /* Body */
@@ -896,118 +896,106 @@ FOSSEE, IIT Bombay', [
 
 
 
-case 'proposal_completed':
 
-  /* Load proposal */
-  $proposal_data = \Drupal::database()
-    ->select('lab_migration_proposal', 'p')
-    ->fields('p')
-    ->condition('id', $params['proposal_completed']['proposal_id'])
-    ->range(0, 1)
-    ->execute()
-    ->fetchObject();
+    case 'proposal_completed':
 
-  /* Solution provider label */
-  if ($proposal_data->solution_display == 1) {
-    $solution_display = 'Yes';
-  }
-  else {
-    $solution_display = 'No';
-  }
+      /* Load proposal data */
+      $query = \Drupal::database()->select('lab_migration_proposal', 'p');
+      $query->fields('p');
+      $query->condition('id', $params['proposal_completed']['proposal_id']);
+      $query->range(0, 1);
+      $proposal_data = $query->execute()->fetchObject();
 
-  if ($proposal_data->solution_provider_uid == 0) {
-    $solution_provider_user = 'Open';
-  }
-  elseif ($proposal_data->solution_provider_uid == $proposal_data->uid) {
-    $solution_provider_user = 'Proposer';
-  }
-  else {
-    $provider = User::load($proposal_data->solution_provider_uid);
-    $solution_provider_user = $provider ? $provider->getDisplayName() : 'Unknown';
-  }
+      if (!$proposal_data) {
+        return;
+      }
 
-  /* Load experiments */
-  $experiment_q = \Drupal::database()
-    ->select('lab_migration_experiment', 'e')
-    ->fields('e')
-    ->condition('proposal_id', $params['proposal_completed']['proposal_id'])
-    ->orderBy('number', 'ASC')
-    ->execute();
+      /* Solution display */
+      if ($proposal_data->solution_display == 1) {
+        $solution_display = 'Yes';
+      }
+      else {
+        $solution_display = 'No';
+      }
 
-  $experiment_list = '';
-  while ($experiment_data = $experiment_q->fetchObject()) {
-    $experiment_list .= $experiment_data->number . ') ' .
-      $experiment_data->title .
-      ' — ' . $experiment_data->description . "\n";
-  }
+      /* Solution provider */
+      if ($proposal_data->solution_provider_uid == 0) {
+        $solution_provider_user = 'Open';
+      }
+      elseif ($proposal_data->solution_provider_uid == $proposal_data->uid) {
+        $solution_provider_user = 'Proposer';
+      }
+      else {
+        $provider_user = User::load($proposal_data->solution_provider_uid);
+        if ($provider_user) {
+          $solution_provider_user = $provider_user->getDisplayName();
+        }
+        else {
+          $solution_provider_user = 'Unknown';
+        }
+      }
 
-  /* Load user */
-  $user_data = User::load($params['proposal_completed']['user_id']);
+      /* Load experiments */
+      $query = \Drupal::database()->select('lab_migration_experiment', 'e');
+      $query->fields('e');
+      $query->condition('proposal_id', $params['proposal_completed']['proposal_id']);
+      $query->orderBy('number', 'ASC');
+      $experiment_q = $query->execute();
 
-  /* Site name */
-  $site_name = \Drupal::config('system.site')->get('name');
+      $experiment_list = "\n";
+      while ($experiment_data = $experiment_q->fetchObject()) {
+        $experiment_list .= '<p>' . $experiment_data->number . ') ' . $experiment_data->title . '<br> Description: ' . $experiment_data->description . '<br></p>';
+      }
 
-  /* Headers */
-  $headers = $params['proposal_completed']['headers'] ?? [];
+      /* Load user */
+      $user_data = User::load($params['proposal_completed']['user_id']);
+      $user_email = $user_data ? $user_data->getEmail() : '';
 
-  // Prevent PhpMail fatal error
-  if (isset($headers['Cc']) && is_array($headers['Cc'])) {
-    $headers['Cc'] = implode(',', $headers['Cc']);
-  }
-  if (isset($headers['Bcc']) && is_array($headers['Bcc'])) {
-    $headers['Bcc'] = implode(',', $headers['Bcc']);
-  }
+      /* Headers */
+      if (!empty($params['proposal_completed']['headers'])) {
+        $message['headers'] = $params['proposal_completed']['headers'];
+      }
 
-  $message['headers'] = $headers;
+      /* Subject */
+      $site_name = \Drupal::config('system.site')->get('name');
 
-  /* Subject */
-  $message['subject'] = t('[@site_name] Congratulations for completion of the Lab migration', [
-    '@site_name' => $site_name,
-  ]);
+      $message['subject'] = t('[@site] Congratulations for completion of the Lab migration', [
+        '@site' => $site_name,
+      ]);
 
-  /* Body */
-  $message['body'][] = t('
-Dear !name,
+      /* Body */
+      $message['body'][] = t('
+Dear ' . $proposal_data->name . ',
 
 Following lab migration has been completed successfully:
 
-Full Name: !full_name
-Email: !email
-Contact No.: !phone
-Department/Branch: !department
-University/Institute: !university
-City: !city
-State: !state
+Full Name: ' . $proposal_data->name_title . ' ' . $proposal_data->name . '
+Email: ' . $user_email . '
+Contact No.: ' . $proposal_data->contact_ph . '
+Department/Branch: ' . $proposal_data->department . '
+University/Institute: ' . $proposal_data->university . '
+City: ' . $proposal_data->city . '
+State: ' . $proposal_data->state . '
 
-Solution for this lab has been provided by: !solution_provider
+Solution for this lab has been provided by ' . $solution_provider_user . '
 
-List of experiments:
-!experiments
+List of experiments: ' . $experiment_list . '
 
-Your lab solution is now available at the following link:
+Your lab solution is now available at following link to download.
 
-!link
+https://r.fossee.in/lab-migration/lab-migration-run/' . $proposal_data->id . '
 
 Best Wishes,
 
-@site_name Team
+!site_name Team
 FOSSEE, IIT Bombay', [
-    '@site_name'        => $site_name,
-    '!name'             => $proposal_data->name,
-    '!full_name'        => $proposal_data->name_title . ' ' . $proposal_data->name,
-    '!email'            => $user_data->getEmail(),
-    '!phone'            => $proposal_data->contact_ph,
-    '!department'       => $proposal_data->department,
-    '!university'       => $proposal_data->university,
-    '!city'             => $proposal_data->city,
-    '!state'            => $proposal_data->state,
-    '!solution_provider'=> $solution_provider_user,
-    '!experiments'      => $experiment_list,
-    '!link'             => 'https://r.fossee.in/lab-migration/lab-migration-run/' . $proposal_data->id,
-  ]);
+        '!site_name' => $site_name,
+      ]);
 
-  break;
+      break;
+  
 
+  
 
   case 'solution_pending':
 
@@ -1043,8 +1031,8 @@ FOSSEE, IIT Bombay', [
 
   /* Subject */
   $site_name = \Drupal::config('system.site')->get('name');
-  $message['subject'] = t('[@site_name] Your uploaded Lab migration solution has been pending', [
-    '@site_name' => $site_name,
+  $message['subject'] = t('[@site] Your uploaded Lab migration solution has been pending', [
+    '@site' => $site_name,
   ]);
      
 

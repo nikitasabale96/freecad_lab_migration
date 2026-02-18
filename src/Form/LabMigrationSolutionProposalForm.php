@@ -354,30 +354,89 @@ return $response;
     $result = \Drupal::database()->query($query, $args);
     \Drupal::messenger()->addmessage("We have received your application. We will get back to you soon.", 'status');
     /* sending email */
-    // $email_to = $user->mail;
-    // $from = $config->get('lab_migration_from_email', '');
-    // $bcc = $config->get('lab_migration_emails', '');
-    // $cc = $config->get('lab_migration_cc_emails', '');
-    // $param['solution_proposal_received']['proposal_id'] = $proposal_id;
-    // $param['solution_proposal_received']['user_id'] = $user->uid;
-    // $param['solution_proposal_received']['headers'] = [
-    //   'From' => $from,
-    //   'MIME-Version' => '1.0',
-    //   'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
-    //   'Content-Transfer-Encoding' => '8Bit',
-    //   'X-Mailer' => 'Drupal',
-    //   'Cc' => $cc,
-    //   'Bcc' => $bcc,
-    // ];
-    // if (!drupal_mail('lab_migration', 'solution_proposal_received', $email_to, language_default(), $param, $from, TRUE)) {
-    //   \Drupal::messenger()->addmessage('Error sending email message.', 'error');
-    // }
-    /* sending email */
-    /* $email_to = $config->get('lab_migration_emails', '');
-    if (!drupal_mail('lab_migration', 'solution_proposal_received', $email_to , language_default(), $param, $config->get('lab_migration_from_email', NULL), TRUE))
-    \Drupal::messenger()->addmessage('Error sending email message.', 'error');*/
-    // RedirectResponse('lab-migration/open-proposal');
-    $response = new RedirectResponse('<front>');
+    $email_to = $user->getEmail();
+
+/* Config */
+$config = \Drupal::config('lab_migration.settings');
+
+$from = $config->get('lab_migration_from_email');
+$bcc  = $config->get('lab_migration_emails');
+$cc   = $config->get('lab_migration_cc_emails');
+
+/* Mandatory fallback */
+if (empty($from)) {
+  $from = \Drupal::config('system.site')->get('mail');
+}
+
+/* Params */
+$params['solution_proposal_received'] = [
+  'proposal_id' => $proposal_id,
+  'user_id' => $user->id(),
+  'headers' => [
+    'From' => $from,
+    'MIME-Version' => '1.0',
+    'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
+    'Content-Transfer-Encoding' => '8Bit',
+    'X-Mailer' => 'Drupal',
+    'Cc' => $cc,
+    'Bcc' => $bcc,
+  ],
+];
+
+/* Language */
+$langcode = \Drupal::languageManager()->getDefaultLanguage()->getId();
+
+/* Send mail */
+$mailManager = \Drupal::service('plugin.manager.mail');
+
+$result = $mailManager->mail(
+  'lab_migration',
+  'solution_proposal_received',
+  $email_to,
+  $langcode,
+  $params,
+  $from,
+  TRUE
+);
+
+if (empty($result['result'])) {
+  \Drupal::messenger()->addError('Error sending email message.');
+}
+else {
+  \Drupal::messenger()->addStatus('Email sent successfully.');
+}
+
+    /* Sending email */
+
+$email_to = $config->get('lab_migration_emails');
+
+$from = $config->get('lab_migration_from_email');
+
+/* Fallback if from is empty */
+if (empty($from)) {
+  $from = \Drupal::config('system.site')->get('mail');
+}
+
+/* Language */
+$langcode = \Drupal::languageManager()->getDefaultLanguage()->getId();
+
+/* Send mail */
+$mailManager = \Drupal::service('plugin.manager.mail');
+
+$result = $mailManager->mail(
+  'lab_migration',
+  'solution_proposal_received',
+  $email_to,
+  $langcode,
+  $param,
+  $from,
+  TRUE
+);
+
+if (empty($result['result'])) {
+  \Drupal::messenger()->addError('Error sending email message.');
+}
+$response = new RedirectResponse('<front>');
     $response->send();
   }
 
